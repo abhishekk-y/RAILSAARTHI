@@ -249,6 +249,7 @@ The API requires at least 10 validated records and retrains all four models with
 | `GET` | `/api/metrics/availability` | Baseline and optimized metrics |
 | `GET` | `/api/joint-blocks` | Compatible shared possessions |
 | `POST` | `/api/replan` | Disruption replanning |
+| `POST` | `/api/what-if/traffic` | Re-solve freight-growth or passenger-delay scenario |
 | `GET` | `/api/simulation/state` | Digital-twin snapshot |
 | `POST` | `/api/simulation/tick` | Advance simulation |
 | `GET` | `/api/conflicts` | Hard conflict report |

@@ -18,6 +18,7 @@ from .ml import train_models, registry, predict, forecast_freight
 from .railway_data import RailwayDataImport, import_records, status as data_source_status, statistics as data_statistics
 from . import railway_data
 from .workflow import seed_requests, list_requests, update_request, permissions
+from .what_if import traffic_scenario
 import csv
 from io import StringIO
 
@@ -97,6 +98,13 @@ def replan(train_id: str, delay_minutes: int = 45):
     result = replan_for_delay(SCENARIO, OPTIMIZED or BASELINE, train_id, delay_minutes)
     SCENARIO = generate_scenario(result['scenario']['seed']); SCENARIO.trains = [Train(**item) for item in result['scenario']['trains']]
     OPTIMIZED = cp_sat(SCENARIO, 5.0); hub.publish({'type':'REPLAN_COMPLETE','train_id':train_id,'delay_minutes':delay_minutes,'status':OPTIMIZED.status}); return result
+
+@app.post('/api/what-if/traffic')
+def what_if_traffic(freight_multiplier: float = 1.2, passenger_delay_minutes: int = 0):
+    try:
+        return traffic_scenario(SCENARIO, OPTIMIZED or BASELINE, freight_multiplier, passenger_delay_minutes)
+    except ValueError as error:
+        raise HTTPException(400, str(error))
 
 @app.get('/api/simulation/state')
 def simulation_state(): return snapshot(SCENARIO, OPTIMIZED or BASELINE, TWIN.minute)

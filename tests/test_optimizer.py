@@ -43,3 +43,13 @@ def test_trained_model_workflow():
     assert 'priority' in prediction['model_versions']
     assert len(client.get('/api/models/freight-forecast?hours=24').json()['forecast']) == 24
     assert client.post('/api/models/train').status_code == 200
+
+
+def test_traffic_what_if_workflow():
+    client = TestClient(app)
+    result = client.post('/api/what-if/traffic?freight_multiplier=1.2&passenger_delay_minutes=0')
+    assert result.status_code == 200
+    payload = result.json()
+    assert payload['assumptions']['freight_multiplier'] == 1.2
+    assert 'comparison' in payload
+    assert payload['new_plan']['status'] in {'OPTIMAL', 'FEASIBLE'}

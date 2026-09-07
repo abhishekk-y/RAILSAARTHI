@@ -80,7 +80,7 @@ async function renderModuleView(name){
 	else if(name==='Asset Health') html=`<div class="module-table">${scenario.assets.map(asset=>`<div><strong>${asset.id}</strong><span>${asset.name} · ${asset.asset_type}</span><b class="health-${asset.health.toLowerCase()}">${asset.health}</b></div>`).join('')}</div>`;
 	else if(name==='Conflict Center'){const data=await get('/conflicts'); html=`<p>${data.count} hard conflicts detected in the active schedule.</p><div class="module-table">${data.conflicts.length?data.conflicts.map(item=>`<div><strong>${item.type}</strong><span>${item.message}</span><b>${item.severity}</b></div>`).join(''):'<div class="search-empty">No conflicts detected.</div>'}</div>`}
 	else if(name==='Joint Blocks'){const data=await get('/joint-blocks'); html=`<p>${data.length} compatible joint-block opportunities.</p><div class="module-table">${data.length?data.map(item=>`<div><strong>${item.id}</strong><span>${item.section} · ${item.departments.join(' + ')}</span><b>${item.minutes_saved} min saved</b></div>`).join(''):'<div class="search-empty">No compatible joint blocks found.</div>'}</div>`}
-	else if(name==='What-If Lab') html='<p>Apply a controlled freight disruption and compare the replanned schedule.</p><button class="button secondary" id="moduleDelay">Simulate F-001 +45 min</button><div class="module-grid" id="moduleOutput"></div>';
+	else if(name==='What-If Lab') html='<p>Change traffic assumptions and compare the active schedule against a re-solved plan.</p><div class="actions"><button class="button secondary" id="moduleDelay">Simulate F-001 +45 min</button><button class="button secondary" id="moduleFreight">Increase freight traffic 20%</button><button class="button secondary" id="modulePassenger">Delay passenger traffic 15 min</button></div><div class="module-grid" id="moduleOutput"></div>';
 	else if(name==='Execution'){const state=await get('/simulation/state'); html=`<p>Digital twin execution state: <strong>${state.clock}</strong></p><button class="button secondary" id="moduleTick">Advance 15 minutes</button><div class="module-grid"><span>Active blocks: ${state.active_blocks.length}</span><span>Trains in section: ${state.trains.filter(train=>train.state==='IN_SECTION').length}</span></div>`}
 	else if(name==='Reports') html='<p>Export the current block programme for review.</p><a class="button secondary" href="/api/export/blocks.csv">Download block programme CSV</a>';
 	else if(name==='Data Quality'){const data=await get('/data-quality'); html=`<p>Data quality score: <strong>${data.score}%</strong></p><div class="module-table">${data.checks.map(item=>`<div><strong>${item.rule}</strong><span>${item.count} issue(s)</span><b>${item.passed?'PASS':'FAIL'}</b></div>`).join('')}</div>`}
@@ -95,8 +95,18 @@ function bindModuleActions(name){
 	if($('moduleMap'))$('moduleMap').onclick=loadRealMap;
 	if($('moduleDelay'))$('moduleDelay').onclick=()=>$('delayBtn').click();
 	if($('moduleTick'))$('moduleTick').onclick=()=>$('tickBtn').click();
+	if($('moduleFreight'))$('moduleFreight').onclick=()=>runTrafficWhatIf(1.2,0);
+	if($('modulePassenger'))$('modulePassenger').onclick=()=>runTrafficWhatIf(1,15);
 	if($('moduleTrainModels'))$('moduleTrainModels').onclick=async()=>{ $('moduleStatus').textContent='TRAINING'; await fetch(API+'/models/train',{method:'POST'}); $('moduleStatus').textContent='TRAINED'; renderModuleView('Models') };
 	document.querySelectorAll('.request-approve').forEach(button=>button.onclick=async()=>{await fetch(`${API}/requests/${button.dataset.request}?status=Approved&actor_role=Control%20Office`,{method:'PATCH'}); renderModuleView('Maintenance Backlog')});
+}
+
+async function runTrafficWhatIf(freightMultiplier, passengerDelayMinutes){
+	$('moduleStatus').textContent='SOLVING';
+	const result=await (await fetch(`${API}/what-if/traffic?freight_multiplier=${freightMultiplier}&passenger_delay_minutes=${passengerDelayMinutes}`,{method:'POST'})).json();
+	const comparison=result.comparison;
+	$('moduleOutput').innerHTML=`<span>Old blocks: ${result.changes.old_blocks}</span><span>New blocks: ${result.changes.new_blocks}</span><span>Tasks changed: ${result.changes.scheduled_tasks_moved.length}</span><span>Availability delta: ${comparison.delta.asset_availability}%</span><span>Train delay delta: ${comparison.delta.train_delay_min} min</span><span>Solver: ${result.new_plan.status}</span>`;
+	$('moduleStatus').textContent=result.new_plan.status;
 }
 
 function renderStringline(){
