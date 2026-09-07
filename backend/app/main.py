@@ -17,6 +17,7 @@ from .live_data import fetch_gtfs_realtime, fetch_osm_railway
 from .ml import train_models, registry, predict, forecast_freight
 from .railway_data import RailwayDataImport, import_records, status as data_source_status, statistics as data_statistics
 from . import railway_data
+from .workflow import seed_requests, list_requests, update_request, permissions
 import csv
 from io import StringIO
 
@@ -27,6 +28,7 @@ SCENARIO = generate_scenario(); BASELINE = greedy(SCENARIO); OPTIMIZED = None
 TWIN = TwinState(scenario_seed=SCENARIO.seed)
 LIVE_DATA = {'map': None, 'trains': None, 'last_refresh': None}
 MODEL_REGISTRY = train_models(SCENARIO)
+seed_requests(SCENARIO)
 
 @app.get('/api/health')
 def health(): return {'api':'healthy','database':'demo-memory','optimizer':'ready','simulation':'available','synthetic':True}
@@ -34,11 +36,28 @@ def health(): return {'api':'healthy','database':'demo-memory','optimizer':'read
 def scenario(): return SCENARIO.model_dump()
 @app.post('/api/scenario/load')
 def load(seed: int = 42):
-    global SCENARIO, BASELINE, OPTIMIZED, TWIN, MODEL_REGISTRY; SCENARIO = generate_scenario(seed); BASELINE = greedy(SCENARIO); OPTIMIZED = None; TWIN = TwinState(scenario_seed=seed); MODEL_REGISTRY = train_models(SCENARIO, railway_data.IMPORTED_RECORDS or None, railway_data.SOURCE_METADATA.get('source_name')); hub.publish({'type':'SCENARIO_LOADED','seed':seed}); return SCENARIO.model_dump()
+    global SCENARIO, BASELINE, OPTIMIZED, TWIN, MODEL_REGISTRY; SCENARIO = generate_scenario(seed); BASELINE = greedy(SCENARIO); OPTIMIZED = None; TWIN = TwinState(scenario_seed=seed); MODEL_REGISTRY = train_models(SCENARIO, railway_data.IMPORTED_RECORDS or None, railway_data.SOURCE_METADATA.get('source_name')); seed_requests(SCENARIO); hub.publish({'type':'SCENARIO_LOADED','seed':seed}); return SCENARIO.model_dump()
 @app.get('/api/tasks')
 def tasks(): return [t.model_dump() for t in SCENARIO.tasks]
 @app.get('/api/trains')
 def trains(): return [t.model_dump() for t in SCENARIO.trains]
+
+@app.get('/api/requests')
+def maintenance_requests(department: str | None = None, status: str | None = None, priority: str | None = None): return {'count': len(list_requests(department, status, priority)), 'requests': list_requests(department, status, priority)}
+
+@app.patch('/api/requests/{request_id}')
+def change_request_status(request_id: str, status: str, actor_role: str = 'Control Office'):
+    try:
+        return update_request(request_id, status, actor_role)
+    except PermissionError as error:
+        raise HTTPException(403, str(error))
+    except KeyError:
+        raise HTTPException(404, 'Request not found')
+    except ValueError as error:
+        raise HTTPException(400, str(error))
+
+@app.get('/api/roles/permissions')
+def role_permissions(): return permissions()
 
 @app.get('/api/search')
 def search(query: str = '', kind: str = 'all', limit: int = 25):

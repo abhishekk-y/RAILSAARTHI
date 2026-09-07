@@ -35,6 +35,10 @@ Public web data is an optional integration path. The deterministic synthetic sce
 
 The local service exposes `/ws/events` for optimization, simulation and replan events, `/api/replan` for disruption recovery, `/api/simulation/state` and `/api/simulation/tick` for the digital twin, `/api/search?query=F-001&kind=trains` for train-number lookup, `/api/joint-blocks`, `/api/conflicts`, `/api/data-quality`, `/api/robustness`, `/api/integration/status`, and `/api/export/blocks.csv`.
 
+## Request Workflow and Roles
+
+The backlog is now a request workflow rather than a read-only list. `/api/requests` supports department, status and priority filters. `/api/requests/{request_id}` supports status transitions, while `/api/roles/permissions` exposes the permission matrix. Only `Control Office` and `Administrator` roles can approve or reject a request; planners and departments can inspect and submit work without bypassing operational approval.
+
 ## Local AI models
 
 `/api/models/train` trains deterministic duration, failure-risk, priority, and freight-forecast models from seeded synthetic history. `/api/models` exposes registry metadata and validation metrics. `/api/models/predict/{task_id}` returns priority, risk, and duration interval estimates; `/api/models/freight-forecast` returns hourly demand estimates. These models provide prioritization and planning estimates only; CP-SAT hard safety constraints remain authoritative, and synthetic metrics are not production claims.
@@ -47,4 +51,4 @@ The demo corridor is fictional: Sampur Jn, Kalyanpur, Nandipur, Vikas Nagar and 
 
 ## Scope and limitations
 
-The current runnable slice uses in-memory persistence and a 24-hour demonstration horizon. PostgreSQL, migrations, authentication, live adapters, Monte Carlo execution, approval workflow and 3D visualization are staged extension points, not represented as complete capabilities. No safety authority is delegated to the software.
+The current runnable slice uses in-memory persistence and a 24-hour planning horizon. PostgreSQL, migrations, production authentication, live adapters, and 3D visualization remain deployment extensions. The request approval workflow, CP-SAT scheduling, digital-twin simulation and analytics are implemented locally. No safety authority is delegated to the software.
