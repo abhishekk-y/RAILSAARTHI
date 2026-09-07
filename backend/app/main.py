@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, WebSocket
+from fastapi import FastAPI, HTTPException, WebSocket, File, Form, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -15,7 +15,7 @@ from .analytics import conflicts, data_quality, robustness
 from .integration import SyntheticAdapter
 from .live_data import fetch_gtfs_realtime, fetch_osm_railway
 from .ml import train_models, registry, predict, forecast_freight
-from .railway_data import RailwayDataImport, import_records, status as data_source_status, statistics as data_statistics
+from .railway_data import RailwayDataImport, import_records, status as data_source_status, statistics as data_statistics, parse_batch
 from . import railway_data
 from .workflow import seed_requests, list_requests, update_request, permissions
 from .what_if import traffic_scenario
@@ -150,6 +150,15 @@ def import_railway_data(payload: RailwayDataImport):
     MODEL_REGISTRY = train_models(SCENARIO, railway_data.IMPORTED_RECORDS, metadata['source_name'])
     hub.publish({'type': 'RAILWAY_DATA_IMPORTED', 'source': metadata['source_name'], 'records': metadata['records']})
     return {'source': metadata, 'statistics': data_statistics(), 'models': registry()}
+
+@app.post('/api/railway-data/import-file')
+async def import_railway_file(file: UploadFile = File(...), source_name: str = Form(...), source_url: str = Form(...), authority: str = Form(...)):
+    try:
+        records, errors = parse_batch(await file.read(), file.filename or 'dataset.csv')
+        payload = RailwayDataImport(source_name=source_name, source_url=source_url, authority=authority, synthetic=False, records=records)
+        return import_railway_data(payload)
+    except ValueError as error:
+        raise HTTPException(400, str(error))
 
 @app.get('/api/railway-data/status')
 def railway_data_status(): return data_source_status()

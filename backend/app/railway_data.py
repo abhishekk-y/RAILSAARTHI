@@ -1,5 +1,8 @@
 from datetime import datetime, timezone
 from typing import Any
+import csv
+import io
+import json
 from pydantic import BaseModel, Field, HttpUrl
 
 class RailwayTrainingRecord(BaseModel):
@@ -27,8 +30,37 @@ SOURCE_METADATA: dict[str, Any] = {'mode': 'SYNTHETIC_DEMO', 'source_name': 'SIH
 def import_records(payload: RailwayDataImport) -> dict:
     global IMPORTED_RECORDS, SOURCE_METADATA
     IMPORTED_RECORDS = [record.model_dump() for record in payload.records]
-    SOURCE_METADATA = {'mode': 'SYNTHETIC' if payload.synthetic else 'IMPORTED_REAL_DATA', 'source_name': payload.source_name, 'source_url': str(payload.source_url), 'authority': payload.authority, 'records': len(IMPORTED_RECORDS), 'imported_at': datetime.now(timezone.utc).isoformat()}
+    SOURCE_METADATA = {'mode': 'SYNTHETIC' if payload.synthetic else 'IMPORTED_REAL_DATA', 'source_name': payload.source_name, 'source_url': str(payload.source_url), 'authority': payload.authority, 'records': len(IMPORTED_RECORDS), 'imported_at': datetime.now(timezone.utc).isoformat(), 'ingestion': 'validated-batch', 'training_ready': len(IMPORTED_RECORDS) >= 10}
     return SOURCE_METADATA
+
+
+def parse_batch(contents: bytes, filename: str) -> tuple[list[RailwayTrainingRecord], list[dict]]:
+    if len(contents) > 50 * 1024 * 1024:
+        raise ValueError('Dataset exceeds the 50 MB upload limit')
+    extension = filename.lower().rsplit('.', 1)[-1]
+    try:
+        if extension == 'csv':
+            rows = list(csv.DictReader(io.StringIO(contents.decode('utf-8-sig'))))
+        elif extension in {'json', 'jsonl'}:
+            text = contents.decode('utf-8-sig')
+            rows = [json.loads(line) for line in text.splitlines() if line.strip()] if extension == 'jsonl' else json.loads(text)
+            if isinstance(rows, dict):
+                rows = rows.get('records', [])
+        else:
+            raise ValueError('Use a .csv, .json or .jsonl file')
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ValueError(f'Invalid dataset encoding or JSON: {error}')
+    if not isinstance(rows, list) or len(rows) < 10:
+        raise ValueError('Dataset must contain at least 10 records')
+    records, errors = [], []
+    for row_number, row in enumerate(rows, 1):
+        try:
+            records.append(RailwayTrainingRecord.model_validate(row))
+        except Exception as error:
+            errors.append({'row': row_number, 'error': str(error)})
+    if errors:
+        raise ValueError(json.dumps({'message': 'Dataset validation failed', 'invalid_rows': errors[:50], 'invalid_count': len(errors)}))
+    return records, errors
 
 
 def status() -> dict:

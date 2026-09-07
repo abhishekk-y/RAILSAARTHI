@@ -26,6 +26,8 @@
 - Offline trained duration, failure-risk, priority, and freight-forecast models with registry metadata, synthetic validation metrics and uncertainty intervals.
 - Validated Indian railway data import contract with source authority, URL, provenance, statistics, and immediate four-model retraining.
 - Advanced what-if traffic solver for freight growth and passenger-delay assumptions with old/new KPI deltas.
+- Production-style multipart CSV/JSON/JSONL railway data ingestion with bounded upload, row validation, provenance and model retraining.
+Validated with Python 3.13.1 and OR-Tools 9.12: `6 passed`; seeded CP-SAT returns `OPTIMAL`; batch CSV ingestion returns `IMPORTED_REAL_DATA` and `1.0-imported` model versions; imported-record workflow works; traffic what-if re-solving returns `OPTIMAL` with calculated KPI deltas; all four trained models appear in the registry; task predictions expose priority, risk and duration intervals; freight forecasts return hourly estimates; live status, quality and health routes return HTTP 200; browser CP-SAT run displays `OPTIMAL` and a measured runtime; public OpenStreetMap fetch rendered 1,945 railway features in Leaflet. No real Indian Railway dataset is bundled. Node syntax validation passes for `frontend/app.js`. Docker image validation is pending because Docker Desktop is not running on the host. The in-process WebSocket harness did not complete a receive assertion and needs runtime-browser validation.
 
 ## API routes
 

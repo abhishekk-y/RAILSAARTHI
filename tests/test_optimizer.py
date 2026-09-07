@@ -52,4 +52,15 @@ def test_traffic_what_if_workflow():
     payload = result.json()
     assert payload['assumptions']['freight_multiplier'] == 1.2
     assert 'comparison' in payload
-    assert payload['new_plan']['status'] in {'OPTIMAL', 'FEASIBLE'}
+        assert payload['new_plan']['status'] in {'OPTIMAL', 'FEASIBLE'}
+
+    def test_batch_railway_file_import():
+        client = TestClient(app)
+        rows = '\n'.join([
+            'criticality,safety_risk,defect_severity,crew_size,machine,power_isolation,signal_disconnection,duration_minutes,failure_label',
+            *['4,3,3,4,false,false,true,60,0' for _ in range(10)],
+        ])
+        response = client.post('/api/railway-data/import-file', files={'file': ('records.csv', rows, 'text/csv')}, data={'source_name': 'Authorized export', 'source_url': 'https://data.gov.in/', 'authority': 'Data owner'})
+        assert response.status_code == 200
+        assert response.json()['source']['records'] == 10
+        assert response.json()['models'][0]['version'] == '1.0-imported'

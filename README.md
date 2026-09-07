@@ -258,6 +258,9 @@ The API requires at least 10 validated records and retrains all four models with
 | `POST` | `/api/models/train` | Retrain models |
 | `GET` | `/api/models/predict/{task_id}` | Task prediction |
 | `POST` | `/api/railway-data/import` | Import authorized training records |
+| `POST` | `/api/railway-data/import-file` | Upload validated CSV, JSON or JSONL records up to 50 MB |
+The API requires at least 10 validated records and retrains all four models with imported provenance. For large authorized files, use `multipart/form-data` on `/api/railway-data/import-file`; each row is validated before it can affect training. Invalid rows are rejected with row numbers and validation details. The current implementation is bounded to 50 MB per upload and is ready to be moved behind object storage and a background training queue for division-scale datasets.
+The current suite covers deterministic scenario generation, baseline constraints, realtime workflow, freight-delay replanning, model training, imported-record prediction, batch file ingestion and role-based request approval.
 | `GET` | `/api/live/status` | Public-feed status |
 | `GET` | `/api/export/blocks.csv` | Export block programme |
 | `WS` | `/ws/events` | Progress and execution events |
