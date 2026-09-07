@@ -1,0 +1,8 @@
+services:
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      RAILSAARTHI_DATA_MODE: synthetic
+    command: uvicorn backend.app.main:app --host 0.0.0.0 --port 8000

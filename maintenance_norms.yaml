@@ -1,0 +1,32 @@
+metadata:
+  source_reference: "Prototype assumptions only"
+  verified: false
+  assumption: "Durations and compatibility are synthetic demonstration values, not railway regulations."
+asset_norms:
+  - asset_type: Track
+    activity: Rail weld inspection
+    periodicity: configurable
+    nominal_duration: 45
+    minimum_duration: 30
+    crew: Engineering
+    machine: inspection-trolley
+    safety_critical: true
+    compatibility: [S&T]
+  - asset_type: Signal
+    activity: Axle counter calibration
+    periodicity: configurable
+    nominal_duration: 55
+    minimum_duration: 40
+    crew: S&T
+    machine: null
+    safety_critical: true
+    compatibility: [Engineering]
+  - asset_type: OHE
+    activity: Section insulator replacement
+    periodicity: configurable
+    nominal_duration: 65
+    minimum_duration: 50
+    crew: TRD
+    machine: tower-wagon
+    safety_critical: true
+    compatibility: []
